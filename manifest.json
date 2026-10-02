@@ -1,0 +1,20 @@
+{
+  "name": "BKHC Center สุวรรณภูมิ",
+  "short_name": "BKHC App",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0088cc",
+  "theme_color": "#0088cc",
+  "icons": [
+    {
+      "src": "https://lh3.googleusercontent.com/d/12m0nfg9cQRJArGnySQx2EHaonst9SQXA=s200",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://lh3.googleusercontent.com/d/12m0nfg9cQRJArGnySQx2EHaonst9SQXA=s200",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
