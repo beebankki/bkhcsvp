@@ -5,17 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>BKHC Mobile App V.3.0</title>
   
-  <!-- เชื่อมโยง Manifest สำหรับ PWA -->
+  <!-- เชื่อมโยง Manifest และ ไลบรารีสแกน QR -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0088cc">
   <link rel="apple-touch-icon" href="https://lh3.googleusercontent.com/d/12m0nfg9cQRJArGnySQx2EHaonst9SQXA=s200">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #0088cc; font-family: 'Prompt', sans-serif; }
     iframe { width: 100%; height: 100%; border: none; display: block; }
 
-    /* สไตล์ปุ่มติดตั้ง PWA ลอยที่มุมขวาล่าง */
+    /* หน้าต่างสแกน QR Code ลอยเต็มจอสำหรับ Staff */
+    #scannerModal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 99999;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: #fff;
+      text-align: center;
+    }
+    #scannerModal.active { display: flex; }
+    #reader { width: 100%; max-width: 360px; border-radius: 12px; overflow: hidden; background: #000; }
+    .scanner-close-btn {
+      margin-top: 20px;
+      background: #ef4444;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
     #installBtn {
       position: fixed;
       bottom: 20px;
@@ -30,65 +58,116 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.25);
       cursor: pointer;
       z-index: 9999;
-      display: none; /* ซ่อนไว้ก่อนจนกว่า Browser จะอนุญาตให้ติดตั้ง */
+      display: none;
       align-items: center;
       gap: 6px;
-      transition: transform 0.2s;
     }
-    #installBtn:active { transform: scale(0.95); }
   </style>
 </head>
 <body>
 
   <iframe id="appFrame"></iframe>
 
-  <!-- ปุ่มกดติดตั้งแอป -->
+  <!-- หน้าต่างเปิดกล้องสแกน QR Code -->
+  <div id="scannerModal">
+    <h3 style="margin-bottom: 8px; font-size: 18px;"><i class="fa-solid fa-qrcode"></i> กรุณาสแกน QR Code หน้าเตียง</h3>
+    <p style="font-size: 13px; color: #94a3b8; margin-bottom: 16px;">ส่องกล้องไปที่ QR Code ประจำเตียงเพื่อเริ่มใช้งาน</p>
+    <div id="reader"></div>
+    <button class="scanner-close-btn" onclick="closeQrScanner()">ยกเลิก / ข้าม</button>
+  </div>
+
   <button id="installBtn"><i class="fa-solid fa-download"></i> 📲 ติดตั้งแอป</button>
 
   <script>
-    // ส่งต่อ URL Query (เช่น ?bed=B3) เข้าไปใน IFrame อัตโนมัติ
-    const searchParams = window.location.search;
     const baseAppUrl = "https://script.google.com/macros/s/AKfycbyoLvyeyFV-g3g1qTG0tRHzPBnoWHefVskwXhCXi5oNln2wnNQCVgqdYq6WbW_9pgKSOQ/exec";
-    document.getElementById('appFrame').src = baseAppUrl + searchParams;
+    
+    // โหลดหน้าเว็บตามพารามิเตอร์เดิม (ถ้ามี)
+    const urlParams = new URLSearchParams(window.location.search);
+    let currentBed = urlParams.get('bed') || '';
+    
+    const iframe = document.getElementById('appFrame');
+    iframe.src = baseAppUrl + (currentBed ? `?bed=${currentBed}` : '');
 
-    // ลงทะเบียน Service Worker
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
-          .then((reg) => console.log('Service Worker registered!', reg))
-          .catch((err) => console.log('Service Worker registration failed:', err));
+    let html5QrCode = null;
+
+    // ฟังก์ชันรับข้อความแจ้งเตือนเมื่อ Login สำเร็จจาก IFrame ภายใน
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'USER_LOGGED_IN') {
+        let role = event.data.role; // จะได้ค่า Staff, Admin หรือ SuperAdmin
+        
+        if (role === 'Staff') {
+          // ถ้าเป็น Staff บังคับเปิดกล้องสแกน QR ทันที
+          openQrScanner();
+        }
+      }
+    });
+
+    function openQrScanner() {
+      document.getElementById('scannerModal').classList.add('active');
+      html5QrCode = new Html5Qrcode("reader");
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          // สแกนเจอ QR Code สำเร็จ 
+          handleScannedUrl(decodedText);
+        },
+        (errorMessage) => {
+          // กำลังค้นหา QR...
+        }
+      ).catch(err => {
+        alert("ไม่สามารถเปิดกล้องได้ กรุณาตรวจสอบการอนุญาตใช้งานกล้อง");
+        closeQrScanner();
       });
     }
 
-    // จัดการเหตุการณ์การติดตั้ง PWA
+    function closeQrScanner() {
+      if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+          document.getElementById('scannerModal').classList.remove('active');
+        }).catch(() => {
+          document.getElementById('scannerModal').classList.remove('active');
+        });
+      } else {
+        document.getElementById('scannerModal').classList.remove('active');
+      }
+    }
+
+    function handleScannedUrl(text) {
+      closeQrScanner();
+      // ดึงค่า bed จาก URL ที่สแกนได้
+      try {
+        let url = new URL(text);
+        let bedVal = url.searchParams.get('bed');
+        if (bedVal) {
+          iframe.src = `${baseAppUrl}?bed=${bedVal}`;
+        } else {
+          // ถ้าสแกนแบบพิมพ์รหัสเตียงตรงๆ
+          iframe.src = `${baseAppUrl}?bed=${text.trim()}`;
+        }
+      } catch (e) {
+        // กรณีสแกนเป็นชื่อเตียงตรงๆ เช่น B3
+        iframe.src = `${baseAppUrl}?bed=${text.trim()}`;
+      }
+    }
+
+    // PWA Install Script
     let deferredPrompt;
     const installBtn = document.getElementById('installBtn');
-
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      installBtn.style.display = 'flex'; // แสดงปุ่มเมื่อพร้อมติดตั้ง
+      installBtn.style.display = 'flex';
     });
-
     installBtn.addEventListener('click', async () => {
       if (deferredPrompt) {
         deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-          console.log('ผู้ใช้กดติดตั้งแอปแล้ว');
-        }
         deferredPrompt = null;
         installBtn.style.display = 'none';
       }
     });
-
-    window.addEventListener('appinstalled', () => {
-      installBtn.style.display = 'none';
-      console.log('ติดตั้งแอปเรียบร้อยแล้ว');
-    });
   </script>
 
-  <!-- โหลด FontAwesome สำหรับไอคอนปุ่ม -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </body>
 </html>
