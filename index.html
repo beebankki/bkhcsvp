@@ -1,28 +1,27 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BKHC App V3.5</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body, html {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-        }
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BKHC Mobile App V.3.0</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0088cc; }
+    iframe { width: 100%; height: 100%; border: none; display: block; }
+  </style>
 </head>
 <body>
-    <iframe src="https://script.google.com/macros/s/AKfycbyoLvyeyFV-g3g1qTG0tRHzPBnoWHefVskwXhCXi5oNln2wnNQCVgqdYq6WbW_9pgKSOQ/exec"></iframe>
+  <iframe id="appFrame"></iframe>
+
+  <script>
+    // ดึงค่า Query String ปัจจุบัน (เช่น ?bed=B3) จาก GitHub Pages
+    const searchParams = window.location.search;
+    
+    // ลิงก์ Web App หลักของ Google Apps Script คุณ
+    const baseAppUrl = "https://script.google.com/macros/s/AKfycbyoLvyeyFV-g3g1qTG0tRHzPBnoWHefVskwXhCXi5oNln2wnNQCVgqdYq6WbW_9pgKSOQ/exec";
+    
+    // สั่งให้ IFrame โหลดหน้าเว็บพร้อมพารามิเตอร์เตียงทันที
+    document.getElementById('appFrame').src = baseAppUrl + searchParams;
+  </script>
 </body>
 </html>
