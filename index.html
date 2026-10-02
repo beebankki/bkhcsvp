@@ -4,23 +4,44 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>BKHC Mobile App V.3.0</title>
-  
-  <!-- เชื่อมโยง Manifest และ ไลบรารีสแกน QR -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0088cc">
   <link rel="apple-touch-icon" href="https://lh3.googleusercontent.com/d/12m0nfg9cQRJArGnySQx2EHaonst9SQXA=s200">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
-
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #0088cc; font-family: 'Prompt', sans-serif; }
     iframe { width: 100%; height: 100%; border: none; display: block; }
 
-    /* หน้าต่างสแกน QR Code ลอยเต็มจอสำหรับ Staff */
+    /* ปุ่มทางลัดสแกน QR สำหรับ Staff ลอยเด่น */
+    #floatScanBtn {
+      position: fixed;
+      bottom: 25px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #e11d48;
+      color: #fff;
+      border: none;
+      border-radius: 35px;
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      cursor: pointer;
+      z-index: 9999;
+      display: none; /* จะแสดงเฉพาะเมื่อเลือกเตียงหรือต้องการเปลี่ยนเตียงด่วน */
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* หน้าต่างเปิดกล้องสแกน */
     #scannerModal {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.95);
       z-index: 99999;
       display: none;
       flex-direction: column;
@@ -31,7 +52,7 @@
       text-align: center;
     }
     #scannerModal.active { display: flex; }
-    #reader { width: 100%; max-width: 360px; border-radius: 12px; overflow: hidden; background: #000; }
+    #reader { width: 100%; max-width: 340px; border-radius: 12px; overflow: hidden; background: #000; }
     .scanner-close-btn {
       margin-top: 20px;
       background: #ef4444;
@@ -39,7 +60,7 @@
       border: none;
       border-radius: 10px;
       padding: 10px 24px;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
     }
@@ -68,12 +89,15 @@
 
   <iframe id="appFrame"></iframe>
 
-  <!-- หน้าต่างเปิดกล้องสแกน QR Code -->
+  <!-- ปุ่มสแกน QR ด่วนลอยด้านล่าง -->
+  <button id="floatScanBtn" onclick="openQrScanner()"><i class="fa-solid fa-camera"></i> 📷 สแกน QR เปลี่ยนเตียง</button>
+
+  <!-- หน้าต่างกล้องสแกน -->
   <div id="scannerModal">
-    <h3 style="margin-bottom: 8px; font-size: 18px;"><i class="fa-solid fa-qrcode"></i> กรุณาสแกน QR Code หน้าเตียง</h3>
-    <p style="font-size: 13px; color: #94a3b8; margin-bottom: 16px;">ส่องกล้องไปที่ QR Code ประจำเตียงเพื่อเริ่มใช้งาน</p>
+    <h3 style="margin-bottom: 8px; font-size: 18px;"><i class="fa-solid fa-qrcode"></i> สแกน QR Code หน้าเตียง</h3>
+    <p style="font-size: 13px; color: #94a3b8; margin-bottom: 16px;">ส่องกล้องไปที่ QR Code ของเตียงที่ต้องการ</p>
     <div id="reader"></div>
-    <button class="scanner-close-btn" onclick="closeQrScanner()">ยกเลิก / ข้าม</button>
+    <button class="scanner-close-btn" onclick="closeQrScanner()">ปิดกล้อง</button>
   </div>
 
   <button id="installBtn"><i class="fa-solid fa-download"></i> 📲 ติดตั้งแอป</button>
@@ -81,26 +105,20 @@
   <script>
     const baseAppUrl = "https://script.google.com/macros/s/AKfycbyoLvyeyFV-g3g1qTG0tRHzPBnoWHefVskwXhCXi5oNln2wnNQCVgqdYq6WbW_9pgKSOQ/exec";
     
-    // โหลดหน้าเว็บตามพารามิเตอร์เดิม (ถ้ามี)
     const urlParams = new URLSearchParams(window.location.search);
     let currentBed = urlParams.get('bed') || '';
     
     const iframe = document.getElementById('appFrame');
     iframe.src = baseAppUrl + (currentBed ? `?bed=${currentBed}` : '');
 
-    let html5QrCode = null;
-
-    // ฟังก์ชันรับข้อความแจ้งเตือนเมื่อ Login สำเร็จจาก IFrame ภายใน
-    window.addEventListener('message', (event) => {
-      if (event.data && event.data.type === 'USER_LOGGED_IN') {
-        let role = event.data.role; // จะได้ค่า Staff, Admin หรือ SuperAdmin
-        
-        if (role === 'Staff') {
-          // ถ้าเป็น Staff บังคับเปิดกล้องสแกน QR ทันที
-          openQrScanner();
-        }
+    // หากเปิดแอปมาครั้งแรกแล้วไม่มีเตียงแนบมา (ลิงก์เปล่าๆ) ให้แสดงปุ่มสแกนกระตุ้นให้กด
+    window.addEventListener('load', () => {
+      if (!currentBed) {
+        document.getElementById('floatScanBtn').style.display = 'flex';
       }
     });
+
+    let html5QrCode = null;
 
     function openQrScanner() {
       document.getElementById('scannerModal').classList.add('active');
@@ -109,14 +127,11 @@
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
-          // สแกนเจอ QR Code สำเร็จ 
           handleScannedUrl(decodedText);
         },
-        (errorMessage) => {
-          // กำลังค้นหา QR...
-        }
+        (errorMessage) => {}
       ).catch(err => {
-        alert("ไม่สามารถเปิดกล้องได้ กรุณาตรวจสอบการอนุญาตใช้งานกล้อง");
+        alert("ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตให้เว็บไซต์เข้าถึงกล้องในตั้งค่ามือถือ");
         closeQrScanner();
       });
     }
@@ -135,23 +150,24 @@
 
     function handleScannedUrl(text) {
       closeQrScanner();
-      // ดึงค่า bed จาก URL ที่สแกนได้
       try {
         let url = new URL(text);
         let bedVal = url.searchParams.get('bed');
         if (bedVal) {
+          currentBed = bedVal;
           iframe.src = `${baseAppUrl}?bed=${bedVal}`;
         } else {
-          // ถ้าสแกนแบบพิมพ์รหัสเตียงตรงๆ
+          currentBed = text.trim();
           iframe.src = `${baseAppUrl}?bed=${text.trim()}`;
         }
       } catch (e) {
-        // กรณีสแกนเป็นชื่อเตียงตรงๆ เช่น B3
+        currentBed = text.trim();
         iframe.src = `${baseAppUrl}?bed=${text.trim()}`;
       }
+      document.getElementById('floatScanBtn').style.display = 'flex';
     }
 
-    // PWA Install Script
+    // PWA Install Prompt
     let deferredPrompt;
     const installBtn = document.getElementById('installBtn');
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -167,7 +183,5 @@
       }
     });
   </script>
-
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </body>
 </html>
