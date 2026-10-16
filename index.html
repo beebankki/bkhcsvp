@@ -2,839 +2,215 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ทะเบียนผู้พักฟื้นและจัดผังเตียง (AKKARACARE)</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BKHC Mobile App V.3.5</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0088cc">
+  <link rel="apple-touch-icon" href="https://lh3.googleusercontent.com/d/12m0nfg9cQRJArGnySQx2EHaonst9SQXA=s200">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-  <script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
-
   <style>
-    body { background-color: #f4f6f9; font-family: 'Sarabun', sans-serif; color: #333; }
-    .navbar { background: linear-gradient(135deg, #0d6efd, #0b5ed7); box-shadow: 0 4px 10px rgba(13,110,253,0.15); }
-    .card { border: none; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); }
-    .table thead { background-color: #495057; color: #fff; }
-    .table-hover tbody tr:hover { background-color: rgba(13, 110, 253, 0.04); }
-    
-    #loadingOverlay {
-      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(255, 255, 255, 0.88); backdrop-filter: blur(4px);
-      z-index: 99999; display: flex; flex-direction: column;
-      justify-content: center; align-items: center; display: none;
-    }
-    .spinner-modern {
-      width: 65px; height: 65px;
-      border: 6px solid #e2e8f0; border-top: 6px solid #0d6efd; border-right: 6px solid #0d6efd;
-      border-radius: 50%; animation: spin 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
-    }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    .loading-text { margin-top: 18px; font-weight: 700; color: #0d6efd; font-size: 1.2rem; text-align: center; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0088cc; font-family: 'Prompt', sans-serif; }
+    iframe { width: 100%; height: 100%; border: none; display: block; }
 
-    .img-preview-box {
-      width: 140px; height: 160px; object-fit: cover; border-radius: 10px;
-      border: 3px solid #0d6efd; box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    /* ปุ่มสแกนด่วน หลบมุม ไม่ทับปุ่มยืนยันเวชภัณฑ์ */
+    #floatScanBtn {
+      position: fixed;
+      bottom: 85px; /* ยกสูงขึ้นเพื่อพ้นขอบบาร์ตะกร้า/ปุ่มยืนยัน */
+      right: 20px;
+      background: #e11d48;
+      color: #fff;
+      border: none;
+      border-radius: 30px;
+      padding: 10px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      cursor: pointer;
+      z-index: 9998;
+      display: none;
+      align-items: center;
+      gap: 6px;
     }
-    .section-title { font-size: 1rem; font-weight: 700; color: #0d6efd; border-bottom: 2px solid #e9ecef; padding-bottom: 6px; margin-bottom: 15px; }
-    .readonly-bg { background-color: #e9ecef !important; cursor: not-allowed; }
-    .brand-logo { height: 40px; border-radius: 6px; background-color: white; padding: 2px; }
+
+    /* Popup แจ้งเตือนสแกนสำเร็จ */
+    #toastAlert {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-100px);
+      background: #10b981;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+      z-index: 99999;
+      transition: transform 0.3s ease-in-out;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #toastAlert.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* หน้าต่างเปิดกล้องสแกน */
+    #scannerModal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 99999;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: #fff;
+      text-align: center;
+    }
+    #scannerModal.active { display: flex; }
+    #reader { width: 100%; max-width: 340px; border-radius: 12px; overflow: hidden; background: #000; }
+    .scanner-close-btn {
+      margin-top: 20px;
+      background: #ef4444;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    #installBtn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #059669;
+      color: #fff;
+      border: none;
+      border-radius: 30px;
+      padding: 10px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+      cursor: pointer;
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      gap: 6px;
+    }
   </style>
 </head>
 <body>
 
-  <!-- Loading Popup -->
-  <div id="loadingOverlay">
-    <div class="spinner-modern"></div>
-    <div class="loading-text" id="loadingText">กำลังประมวลผล...</div>
+  <iframe id="appFrame"></iframe>
+
+  <!-- ปุ่มสแกน QR หลบมุมขวาล่าง ไม่ทับปุ่มยืนยัน -->
+  <button id="floatScanBtn" onclick="openQrScanner()"><i class="fa-solid fa-camera"></i> สแกนเตียง</button>
+
+  <!-- Popup แจ้งเตือนสถานะ -->
+  <div id="toastAlert"><i class="fa-solid fa-circle-check"></i> <span id="toastText">สแกนเตียงเรียบร้อยแล้ว</span></div>
+
+  <!-- หน้าต่างกล้องสแกน -->
+  <div id="scannerModal">
+    <h3 style="margin-bottom: 8px; font-size: 18px;"><i class="fa-solid fa-qrcode"></i> สแกน QR Code หน้าเตียง</h3>
+    <p style="font-size: 13px; color: #94a3b8; margin-bottom: 16px;">ส่องกล้องไปที่ QR Code ของเตียงที่ต้องการ</p>
+    <div id="reader"></div>
+    <button class="scanner-close-btn" onclick="closeQrScanner()">ปิดกล้อง</button>
   </div>
 
-  <!-- Top Navbar -->
-  <nav class="navbar navbar-expand-lg navbar-dark mb-4 py-3">
-    <div class="container-fluid px-4">
-      <a class="navbar-brand fw-bold fs-4 d-flex align-items-center" href="#">
-        <img src="https://lh3.googleusercontent.com/d/1_oIvPVatNLZY6qTcY-Aws9nspSsrgCvc" class="brand-logo me-3" alt="Logo">
-        ทะเบียนผู้พักฟื้นและจัดผังเตียง (AKKARACARE)
-      </a>
-      <div class="d-flex gap-2">
-        <button class="btn btn-light text-primary fw-bold shadow-sm" onclick="openSettingsMenu()">
-          <i class="fas fa-cog me-1"></i> SETTING
-        </button>
-      </div>
-    </div>
-  </nav>
+  <button id="installBtn"><i class="fa-solid fa-download"></i> 📲 ติดตั้งแอป</button>
 
-  <!-- Main Content -->
-  <div class="container-fluid px-4">
-    <div class="card p-4">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="m-0 text-secondary fw-bold"><i class="fas fa-list me-2"></i> รายการข้อมูลผู้พักฟื้นทั้งหมด</h4>
-        <div>
-          <button class="btn btn-success btn-lg shadow-sm me-2" onclick="openBedLink()">
-            <i class="fas fa-bed me-1"></i> จัดเตียง
-          </button>
-          <button class="btn btn-primary btn-lg shadow-sm" onclick="openModal('add')">
-            <i class="fas fa-user-plus me-1"></i> เพิ่มข้อมูลใหม่
-          </button>
-        </div>
-      </div>
-      
-      <div class="table-responsive">
-        <table class="table table-hover align-middle text-nowrap">
-          <thead>
-            <tr>
-              <th>รหัสผู้พักฟื้น</th>
-              <th>สถานะ</th>
-              <th>รูปถ่าย</th>
-              <th>ชื่อผู้พักฟื้น</th>
-              <th>อายุ</th>
-              <th>เพศ</th>
-              <th>ประเภท</th>
-              <th>วันที่เข้าพัก</th>
-              <th>ค่าเตียง</th>
-              <th>อยู่ที่ศูนย์เราแล้วกี่วัน</th>
-              <th>โรคประจำตัว</th>
-              <th>ญาติ</th>
-              <th>เบอร์โทรญาติ</th>
-              <th class="text-center">จัดการ</th>
-            </tr>
-          </thead>
-          <tbody id="tableBody">
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- Settings Modal Popup -->
-  <div class="modal fade" id="settingsModal">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header bg-secondary text-white">
-          <h5 class="modal-title fw-bold"><i class="fas fa-cog me-2"></i> SETTING</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body text-center p-4">
-          <button class="btn btn-outline-info w-100 fw-bold mb-3 shadow-sm py-2" onclick="promptSetting('prefix')">
-            <i class="fas fa-font me-2"></i> Format รหัส
-          </button>
-          <button class="btn btn-outline-success w-100 fw-bold mb-3 shadow-sm py-2" onclick="promptSetting('sheet')">
-            <i class="fas fa-file-excel me-2"></i> Set Google Sheet
-          </button>
-          <button class="btn btn-outline-warning w-100 fw-bold mb-3 shadow-sm py-2" onclick="promptSetting('folder')">
-            <i class="fas fa-folder-open me-2"></i> Set Image Folder
-          </button>
-          <button class="btn btn-outline-primary w-100 fw-bold shadow-sm py-2" onclick="promptSetting('bedLink')">
-            <i class="fas fa-link me-2"></i> Set link จัดเตียง
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal Form Data -->
-  <div class="modal fade" id="dataModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-xl">
-      <div class="modal-content">
-        <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title fw-bold" id="modalTitle">ฟอร์มจัดการข้อมูล</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body p-4">
-          
-          <div class="row g-2 mb-4" id="smcButtons">
-            <div class="col-12">
-              <button class="btn btn-info w-100 text-white fw-bold py-2 shadow-sm" onclick="readSmartCard()">
-                <i class="fas fa-id-card fa-lg me-2"></i> นำเข้าข้อมูลจากเครื่องอ่านบัตรประชาชน (Glink GCR01)
-              </button>
-            </div>
-          </div>
-          
-          <div class="text-center p-3 mb-4 bg-light rounded" id="smcLoading" style="display: none; border: 1px dashed #0d6efd;">
-            <div class="spinner-border text-info" role="status"></div>
-            <h5 class="text-info mt-2">กำลังรออ่านบัตร... <span id="smcCountdown">20</span> วินาที</h5>
-            <small class="text-muted">โปรดเสียบบัตรประชาชนที่เครื่องอ่าน</small>
-          </div>
-
-          <div class="text-center p-3 mb-4 bg-light rounded" id="smcRetry" style="display: none; border: 1px dashed #dc3545;">
-            <h5 class="text-danger mb-3"><i class="fas fa-exclamation-triangle"></i> หมดเวลา หรือไม่พบเครื่องอ่านบัตร</h5>
-            <button class="btn btn-warning fw-bold px-4 me-2" onclick="readSmartCard()">ลองอีกครั้ง</button>
-            <button class="btn btn-secondary fw-bold px-4" onclick="resetSMCUI()">ยกเลิก</button>
-          </div>
-
-          <form id="dataForm">
-            <input type="hidden" id="rowIndex">
-            <input type="hidden" id="f_patientImgUrl"> 
-            <input type="hidden" id="f_patientCardFileUrl">
-            <input type="hidden" id="f_relativeCardFileUrl">
-            
-            <div class="row g-3">
-              <div class="col-12"><div class="section-title"><i class="fas fa-user me-2"></i>ข้อมูลผู้พักฟื้น</div></div>
-              
-              <div class="col-md-3 text-center">
-                <div class="mb-2">
-                  <img id="imgPreview" src="https://via.placeholder.com/140x160?text=No+Image" class="img-preview-box">
-                </div>
-                <small class="text-muted d-block mb-2">รูปจากบัตรประชาชน (SMC)</small>
-              </div>
-
-              <div class="col-md-9">
-                <div class="row g-3">
-                  <div class="col-md-4">
-                    <label class="form-label fw-bold">รหัสผู้พักฟื้น</label>
-                    <input type="text" class="form-control fw-bold text-primary" id="f_id" readonly>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label fw-bold">สถานะ</label>
-                    <select class="form-select" id="f_status">
-                      <option value="Active">Active</option>
-                      <option value="Discharge">Discharge</option>
-                    </select>
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label fw-bold">ประเภท</label>
-                    <select class="form-select" id="f_type">
-                      <option value="รายเดือน">รายเดือน</option>
-                      <option value="รายวัน">รายวัน</option>
-                    </select>
-                  </div>
-
-                  <div class="col-md-6">
-                    <label class="form-label fw-bold">ชื่อผู้พักฟื้น</label>
-                    <input type="text" class="form-control" id="f_name" placeholder="เช่น คุณลลิษา มโนบาล" required>
-                  </div>
-                  <div class="col-md-3">
-                    <label class="form-label fw-bold">อายุ</label>
-                    <input type="text" class="form-control" id="f_age">
-                  </div>
-                  <div class="col-md-3">
-                    <label class="form-label fw-bold">เพศ</label>
-                    <input type="text" class="form-control" id="f_gender">
-                  </div>
-                </div>
-              </div>
-
-              <div class="col-12 mt-4"><div class="section-title"><i class="fas fa-calendar-alt me-2"></i>ข้อมูลการพักฟื้นและค่าเตียง</div></div>
-              
-              <div class="col-md-3">
-                <label class="form-label fw-bold">วันที่เข้าพัก</label>
-                <input type="text" class="form-control" id="f_admitDate" placeholder="dd/mm/yyyy" onchange="calculateDuration()">
-              </div>
-              <div class="col-md-3">
-                <label class="form-label fw-bold">ค่าเตียง</label>
-                <input type="text" class="form-control" id="f_bedFee">
-              </div>
-              <div class="col-md-3">
-                <label class="form-label fw-bold">อยู่ที่ศูนย์เราแล้วกี่วัน</label>
-                <input type="text" class="form-control readonly-bg" id="f_stayDays" readonly placeholder="คำนวณอัตโนมัติ">
-              </div>
-              <div class="col-md-3">
-                <label class="form-label fw-bold">โรคประจำตัว</label>
-                <input type="text" class="form-control" id="f_congenitalDisease">
-              </div>
-
-              <div class="col-md-4">
-                <label class="form-label fw-bold">วันที่ญาติแจ้ง Discharge</label>
-                <input type="text" class="form-control" id="f_disNotifiedDate" placeholder="dd/mm/yyyy">
-              </div>
-              <div class="col-md-4">
-                <label class="form-label fw-bold">วันที่คนไข้ Discharge จริง</label>
-                <input type="text" class="form-control" id="f_disActualDate" placeholder="dd/mm/yyyy" onchange="calculateDuration()">
-              </div>
-              <div class="col-md-4">
-                <label class="form-label fw-bold">สาเหตุที่ Discharge</label>
-                <input type="text" class="form-control" id="f_disReason">
-              </div>
-
-              <div class="col-12 mt-4"><div class="section-title"><i class="fas fa-users-cog me-2"></i>ข้อมูลญาติและไฟล์เอกสารแนบ</div></div>
-              
-              <div class="col-md-6">
-                <label class="form-label fw-bold">ชื่อญาติ</label>
-                <input type="text" class="form-control" id="f_relativeName">
-              </div>
-              <div class="col-md-6">
-                <label class="form-label fw-bold">เบอร์โทรญาติ</label>
-                <input type="text" class="form-control" id="f_relativePhone">
-              </div>
-
-              <div class="col-md-6">
-                <label class="form-label fw-bold">อัปโหลด สำเนาบัตรประชาชนผู้พักฟื้น (.JPG/.PDF)</label>
-                <input type="file" class="form-control" id="upload_patientCard" accept="image/jpeg, image/png, application/pdf">
-                <small class="text-primary d-block mt-1" id="link_patientCard"></small>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label fw-bold">อัปโหลด สำเนาบัตรประชาชนญาติ (.JPG/.PDF)</label>
-                <input type="file" class="form-control" id="upload_relativeCard" accept="image/jpeg, image/png, application/pdf">
-                <small class="text-primary d-block mt-1" id="link_relativeCard"></small>
-              </div>
-
-            </div>
-          </form>
-        </div>
-        <div class="modal-footer bg-light">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-          <button type="button" class="btn btn-primary px-4 fw-bold" onclick="saveData()">บันทึกข้อมูล</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // URL Web App ของ Google Apps Script ตัวที่ถูกต้อง
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzqa7bqHJ4VUedPK3zPHq1oBh58y-wx0EC5bHrO5jrqD7ZIzpQW73m9oAum9IMQSHAA/exec';
-
-    let myModal = new bootstrap.Modal(document.getElementById('dataModal'));
-    let mySettingsModal = new bootstrap.Modal(document.getElementById('settingsModal'));
+    const baseAppUrl = "https://script.google.com/macros/s/AKfycbyoLvyeyFV-g3g1qTG0tRHzPBnoWHefVskwXhCXi5oNln2wnNQCVgqdYq6WbW_9pgKSOQ/exec";
     
-    let currentMode = 'add';
-    let allData = [];
-    let persistentWS = null;
-    let lastCapturedCard = null;
-    let currentPrefix = 'AKR69'; 
-    let currentBedLink = ''; 
+    const urlParams = new URLSearchParams(window.location.search);
+    let currentBed = urlParams.get('bed') || '';
+    
+    const iframe = document.getElementById('appFrame');
+    iframe.src = baseAppUrl + (currentBed ? `?bed=${currentBed}` : '');
 
-    let smcTimeoutInterval;
+    window.addEventListener('load', () => {
+      document.getElementById('floatScanBtn').style.display = 'flex';
+    });
 
-    async function callApi(action, payload = {}) {
-      try {
-        let response = await fetch(SCRIPT_URL, {
-          method: 'POST',
-          mode: 'cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: action, ...payload })
+    let html5QrCode = null;
+
+    function openQrScanner() {
+      document.getElementById('scannerModal').classList.add('active');
+      html5QrCode = new Html5Qrcode("reader");
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          handleScannedUrl(decodedText);
+        },
+        (errorMessage) => {}
+      ).catch(err => {
+        alert("ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตให้เว็บไซต์เข้าถึงกล้อง");
+        closeQrScanner();
+      });
+    }
+
+    function closeQrScanner() {
+      if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+          document.getElementById('scannerModal').classList.remove('active');
+        }).catch(() => {
+          document.getElementById('scannerModal').classList.remove('active');
         });
-        return await response.json();
-      } catch (err) {
-        console.error('API Error:', err);
-        return { status: 'error', message: err.toString() };
-      }
-    }
-
-    function showLoading(msg = 'กำลังประมวลผล...') {
-      document.getElementById('loadingText').innerText = msg;
-      document.getElementById('loadingOverlay').style.display = 'flex';
-    }
-    function hideLoading() {
-      document.getElementById('loadingOverlay').style.display = 'none';
-    }
-
-    window.onload = function() {
-      flatpickr("#f_admitDate, #f_disNotifiedDate, #f_disActualDate", {
-        dateFormat: "d/m/Y",
-        locale: "th"
-      });
-
-      loadSettings();
-      loadTableData();
-      initSmartCardWebSocket();
-    };
-
-    async function loadSettings() {
-      let res = await callApi('getSettings');
-      if (res) {
-        if(res.idPrefix) { currentPrefix = res.idPrefix; }
-        if(res.bedLink) { currentBedLink = res.bedLink; }
-      }
-    }
-
-    async function openSettingsMenu() {
-      const { value: pin } = await Swal.fire({
-        title: 'ใส่รหัส PIN',
-        input: 'password',
-        inputPlaceholder: 'ใส่ PIN 6 หลัก',
-        showCancelButton: true
-      });
-
-      if (pin === '123456' || pin === '123465') {
-        mySettingsModal.show();
-      } else if (pin) {
-        Swal.fire('ผิดพลาด', 'PIN ไม่ถูกต้อง', 'error');
-      }
-    }
-
-    async function promptSetting(type) {
-      mySettingsModal.hide();
-      
-      let title = '';
-      let inputType = 'url';
-      let currentVal = '';
-      let placeholder = 'วาง URL ที่นี่...';
-
-      if(type === 'sheet') { title = 'URL ของ Google Sheet หลัก'; }
-      else if(type === 'folder') { title = 'URL ของ Google Drive Folder'; }
-      else if(type === 'bedLink') { 
-        title = 'Link สำหรับเปิดหน้า จัดเตียง'; 
-        currentVal = currentBedLink;
-      }
-      else if(type === 'prefix') { 
-        title = 'ตั้งค่า Format รหัสผู้พักฟื้น'; 
-        inputType = 'text'; 
-        currentVal = currentPrefix; 
-        placeholder = 'เช่น SVP69 (5 ตัวอักษร)'; 
-      }
-
-      const { value: inputVal } = await Swal.fire({
-        title: title,
-        input: inputType,
-        inputValue: currentVal,
-        inputPlaceholder: placeholder,
-        showCancelButton: true
-      });
-
-      if (inputVal !== undefined && inputVal !== null && inputVal !== "") {
-        showLoading('กำลังบันทึกการตั้งค่า...');
-        if (type === 'prefix') {
-          let res = await callApi('savePrefix', { prefix: inputVal, pin: '123456' });
-          hideLoading();
-          if(res.status === 'success') { currentPrefix = inputVal; Swal.fire('สำเร็จ', res.message, 'success'); }
-          else { Swal.fire('ผิดพลาด', res.message, 'error'); }
-        } else {
-          let res = await callApi('saveSetting', { type: type, url: inputVal, pin: '123456' });
-          hideLoading();
-          if(res.status === 'success') { 
-            if(type === 'bedLink') { currentBedLink = inputVal; }
-            Swal.fire('สำเร็จ', res.message, 'success').then(() => { 
-              if(type === 'sheet' || type === 'folder') location.reload(); 
-            }); 
-          }
-          else { Swal.fire('ผิดพลาด', res.message, 'error'); }
-        }
-      }
-    }
-
-    function openBedLink() {
-      if(currentBedLink) {
-        window.open(currentBedLink, '_blank');
       } else {
-        Swal.fire('แจ้งเตือน', 'กรุณาตั้งค่า Link จัดเตียง ในเมนู SETTING ก่อน', 'warning');
+        document.getElementById('scannerModal').classList.remove('active');
       }
     }
 
-    function initSmartCardWebSocket() {
+    function showToast(message) {
+      const toast = document.getElementById('toastAlert');
+      document.getElementById('toastText').innerText = message;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000); // แสดงค้างไว้ 3 วินาทีแล้วหายไป
+    }
+
+    function handleScannedUrl(text) {
+      closeQrScanner();
+      let bedVal = "";
       try {
-        persistentWS = new WebSocket('ws://127.0.0.1:9898/ws');
-        persistentWS.onmessage = (event) => {
-          let lines = event.data.split('\n');
-          for (let line of lines) {
-            if (!line.trim()) continue;
-            let info = parseCardJSON(line);
-            if (info && (info.cid || info.fullName)) {
-              lastCapturedCard = info;
-            }
-          }
-        };
-        persistentWS.onclose = () => { setTimeout(initSmartCardWebSocket, 3000); };
-        persistentWS.onerror = () => { try{ persistentWS.close(); }catch(e){} };
-      } catch (e) {}
-    }
-
-    async function loadTableData() {
-      showLoading('กำลังโหลดข้อมูล...');
-      let data = await callApi('getData');
-      allData = Array.isArray(data) ? data : [];
-      renderTable();
-      hideLoading();
-    }
-
-    function parseDriveImage(url) {
-      if (!url) return 'https://via.placeholder.com/140x160?text=No+Image';
-      if (url.startsWith('data:image')) return url;
-      let match = url.match(/[-\w]{25,}/);
-      if (match) {
-        return 'https://lh3.googleusercontent.com/d/' + match[0];
-      }
-      return url;
-    }
-
-    function parseInputDate(str) {
-      if (!str) return null;
-      let parts = str.split(/[\/\-]/);
-      if (parts.length === 3) {
-        if (parts[0].length === 4) {
-          return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-        } else {
-          return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-        }
-      }
-      return new Date(str);
-    }
-
-    function calculateDuration() {
-      let admitVal = document.getElementById('f_admitDate').value;
-      let disActualVal = document.getElementById('f_disActualDate').value;
-      let stayDaysElem = document.getElementById('f_stayDays');
-
-      if (!admitVal) {
-        stayDaysElem.value = '';
-        return;
-      }
-
-      let admitDate = parseInputDate(admitVal);
-      if (!admitDate || isNaN(admitDate.getTime())) {
-        stayDaysElem.value = '';
-        return;
-      }
-
-      let today = new Date();
-      today.setHours(0,0,0,0);
-
-      let admitCheck = new Date(admitDate);
-      admitCheck.setHours(0,0,0,0);
-
-      if (admitCheck > today) {
-        let dd = String(admitDate.getDate()).padStart(2, '0');
-        let mm = String(admitDate.getMonth() + 1).padStart(2, '0');
-        let yyyy = admitDate.getFullYear() + 543;
-        stayDaysElem.value = `เข้าพัก. ${dd}/${mm}/${yyyy}`;
-      } else {
-        let endDate = disActualVal ? parseInputDate(disActualVal) : new Date();
-        if (!endDate || isNaN(endDate.getTime())) endDate = new Date();
-        
-        endDate.setHours(0,0,0,0);
-        endDate.setDate(endDate.getDate() + 1);
-
-        let y = endDate.getFullYear() - admitDate.getFullYear();
-        let m = endDate.getMonth() - admitDate.getMonth();
-        let d = endDate.getDate() - admitDate.getDate();
-
-        if (d < 0) {
-          m--;
-          let prevMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 0);
-          d += prevMonth.getDate();
-        }
-        if (m < 0) {
-          y--;
-          m += 12;
-        }
-
-        stayDaysElem.value = `${y} ปี ${m} เดือน ${d} วัน`;
-      }
-    }
-
-    function renderTable() {
-      let tbody = document.getElementById('tableBody');
-      tbody.innerHTML = '';
-      allData.forEach((row, i) => {
-        let statusBadge = row.status === 'Active' ? 'bg-success' : 'bg-danger';
-        let imgUrl = parseDriveImage(row.patientImg);
-        
-        let phone = row.relativePhone ? String(row.relativePhone).trim() : '';
-        if (phone.length === 9 && !phone.startsWith('0')) {
-          phone = '0' + phone;
-        }
-
-        tbody.innerHTML += `
-          <tr>
-            <td class="fw-bold text-primary">${row.id}</td>
-            <td><span class="badge ${statusBadge}">${row.status}</span></td>
-            <td><img src="${imgUrl}" style="width:40px; height:45px; object-fit:cover; border-radius:6px;"></td>
-            <td class="fw-bold">${row.name}</td>
-            <td>${row.age}</td>
-            <td>${row.gender}</td>
-            <td>${row.type}</td>
-            <td>${row.admitDate}</td>
-            <td>${row.bedFee}</td>
-            <td>${row.stayDays}</td>
-            <td>${row.congenitalDisease}</td>
-            <td>${row.relativeName}</td>
-            <td>${phone}</td>
-            <td class="text-center">
-              <button class="btn btn-sm btn-outline-primary" onclick="editData(${i})"><i class="fas fa-edit me-1"></i>ดูข้อมูล/แก้ไข</button>
-            </td>
-          </tr>
-        `;
-      });
-    }
-
-    function openModal(mode) {
-      currentMode = mode;
-      document.getElementById('dataForm').reset();
-      document.getElementById('imgPreview').src = 'https://via.placeholder.com/140x160?text=No+Image';
-      document.getElementById('modalTitle').innerHTML = mode === 'add' ? '<i class="fas fa-user-plus me-2"></i> เพิ่มข้อมูลใหม่' : '<i class="fas fa-user-edit me-2"></i> แก้ไขข้อมูลผู้พักฟื้น';
-      
-      resetSMCUI();
-      
-      document.getElementById('link_patientCard').innerHTML = '';
-      document.getElementById('link_relativeCard').innerHTML = '';
-      document.getElementById('f_patientImgUrl').value = '';
-      document.getElementById('f_patientCardFileUrl').value = '';
-      document.getElementById('f_relativeCardFileUrl').value = '';
-
-      if (mode === 'add') {
-        let maxNum = 0;
-        allData.forEach(row => {
-          if (row.id && String(row.id).startsWith(currentPrefix)) {
-            let numStr = row.id.substring(currentPrefix.length);
-            let num = parseInt(numStr, 10);
-            if (!isNaN(num) && num > maxNum) {
-              maxNum = num;
-            }
-          }
-        });
-        let nextNum = maxNum + 1;
-        document.getElementById('f_id').value = currentPrefix + String(nextNum).padStart(4, '0');
-      }
-
-      myModal.show();
-    }
-
-    function editData(index) {
-      openModal('edit');
-      let data = allData[index];
-      document.getElementById('rowIndex').value = data.rowIndex;
-      document.getElementById('f_id').value = data.id;
-      document.getElementById('f_status').value = data.status;
-      document.getElementById('f_name').value = data.name;
-      document.getElementById('f_age').value = data.age;
-      document.getElementById('f_gender').value = data.gender;
-      document.getElementById('f_type').value = data.type;
-      
-      document.getElementById('f_admitDate').value = data.admitDate || '';
-      document.getElementById('f_bedFee').value = data.bedFee;
-      document.getElementById('f_stayDays').value = data.stayDays;
-      document.getElementById('f_congenitalDisease').value = data.congenitalDisease;
-      
-      document.getElementById('f_disNotifiedDate').value = data.disNotifiedDate || '';
-      document.getElementById('f_disActualDate').value = data.disActualDate || '';
-      document.getElementById('f_disReason').value = data.disReason;
-      
-      document.getElementById('f_relativeName').value = data.relativeName;
-      
-      let phone = data.relativePhone ? String(data.relativePhone).trim() : '';
-      if (phone.length === 9 && !phone.startsWith('0')) {
-        phone = '0' + phone;
-      }
-      document.getElementById('f_relativePhone').value = phone;
-      
-      document.getElementById('f_patientImgUrl').value = data.patientImg;
-      document.getElementById('f_patientCardFileUrl').value = data.patientCardFile;
-      document.getElementById('f_relativeCardFileUrl').value = data.relativeCardFile;
-
-      document.getElementById('imgPreview').src = parseDriveImage(data.patientImg);
-      
-      if(data.patientCardFile) {
-        document.getElementById('link_patientCard').innerHTML = `<a href="${data.patientCardFile}" target="_blank"><i class="fas fa-external-link-alt"></i> ดูไฟล์เดิม</a>`;
-      }
-      if(data.relativeCardFile) {
-        document.getElementById('link_relativeCard').innerHTML = `<a href="${data.relativeCardFile}" target="_blank"><i class="fas fa-external-link-alt"></i> ดูไฟล์เดิม</a>`;
+        let url = new URL(text);
+        bedVal = url.searchParams.get('bed') || text.trim();
+      } catch (e) {
+        bedVal = text.trim();
       }
       
-      calculateDuration();
-    }
-
-    function getFileBase64(fileObj) {
-      return new Promise((resolve, reject) => {
-        if (!fileObj) resolve(null);
-        let reader = new FileReader();
-        reader.readAsDataURL(fileObj);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-      });
-    }
-
-    async function saveData() {
-      showLoading('กำลังบันทึกข้อมูลและอัปโหลดไฟล์...');
+      currentBed = bedVal;
+      iframe.src = `${baseAppUrl}?bed=${bedVal}`;
       
-      let pFile = document.getElementById('upload_patientCard').files[0];
-      let rFile = document.getElementById('upload_relativeCard').files[0];
-      
-      let pBase64 = pFile ? await getFileBase64(pFile) : null;
-      let rBase64 = rFile ? await getFileBase64(rFile) : null;
-      
-      let newPatientCardUrl = document.getElementById('f_patientCardFileUrl').value;
-      let newRelativeCardUrl = document.getElementById('f_relativeCardFileUrl').value;
-      
-      try {
-        if (pBase64) {
-          let pRes = await callApi('uploadFileToDrive', { base64Data: pBase64, filename: "PatientCard_" + document.getElementById('f_id').value });
-          if(pRes.status === 'success') newPatientCardUrl = pRes.url;
-        }
-        if (rBase64) {
-          let rRes = await callApi('uploadFileToDrive', { base64Data: rBase64, filename: "RelativeCard_" + document.getElementById('f_id').value });
-          if(rRes.status === 'success') newRelativeCardUrl = rRes.url;
-        }
-      } catch(e) { console.error("Upload error", e); }
-
-      let relPhone = document.getElementById('f_relativePhone').value;
-
-      let formObj = {
-        id: document.getElementById('f_id').value,
-        status: document.getElementById('f_status').value,
-        name: document.getElementById('f_name').value,
-        age: document.getElementById('f_age').value,
-        gender: document.getElementById('f_gender').value,
-        type: document.getElementById('f_type').value,
-        admitDate: document.getElementById('f_admitDate').value,
-        bedFee: document.getElementById('f_bedFee').value,
-        stayDays: document.getElementById('f_stayDays').value,
-        disNotifiedDate: document.getElementById('f_disNotifiedDate').value,
-        disActualDate: document.getElementById('f_disActualDate').value,
-        disReason: document.getElementById('f_disReason').value,
-        congenitalDisease: document.getElementById('f_congenitalDisease').value,
-        relativeName: document.getElementById('f_relativeName').value,
-        relativePhone: relPhone,
-        patientImg: document.getElementById('f_patientImgUrl').value,
-        patientCardFile: newPatientCardUrl, 
-        relativeCardFile: newRelativeCardUrl 
-      };
-
-      if (currentMode === 'add') {
-        await callApi('addData', { formObj: formObj });
-        myModal.hide(); 
-        loadTableData();
-      } else {
-        let rowIndex = document.getElementById('rowIndex').value;
-        await callApi('updateData', { rowIndex: rowIndex, formObj: formObj });
-        myModal.hide(); 
-        loadTableData();
-      }
+      // แสดง Popup แจ้งเตือนสแกนสำเร็จ
+      showToast(`สแกนเตียง ${bedVal} เรียบร้อยแล้ว`);
     }
 
-    function parseCardJSON(input) {
-      let obj = input;
-      if (typeof input === 'string') {
-        try { obj = JSON.parse(input); } catch (e) { return null; }
+    // PWA Install Prompt
+    let deferredPrompt;
+    const installBtn = document.getElementById('installBtn');
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installBtn.style.display = 'flex';
+    });
+    installBtn.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt = null;
+        installBtn.style.display = 'none';
       }
-      if (!obj || typeof obj !== 'object') return null;
-      if (obj.data && typeof obj.data === 'object') obj = obj.data;
-      else if (obj.result && typeof obj.result === 'object') obj = obj.result;
-
-      let keys = {};
-      function collectKeys(o) {
-        if (!o || typeof o !== 'object') return;
-        for (let k in o) {
-          if (o[k] !== null && o[k] !== undefined) {
-            if (String(k).toLowerCase() === 'name_eng') continue;
-
-            let lowerK = k.toLowerCase().replace(/[-_]/g, '');
-            keys[lowerK] = o[k];
-            if (typeof o[k] === 'object' && !Array.isArray(o[k])) collectKeys(o[k]);
-          }
-        }
-      }
-      collectKeys(obj);
-
-      let cid = keys['cid'] || keys['citizenno'] || keys['idcard'] || '';
-      cid = String(cid).replace(/\D/g, '');
-
-      let fnameTh = keys['firstnameth'] || keys['fnameth'] || keys['nameth'] || '';
-      let lnameTh = keys['lastnameth'] || keys['lnameth'] || '';
-      
-      let fnameEn = keys['firstname'] || keys['fname'] || '';
-      let lnameEn = keys['lastname'] || keys['lname'] || '';
-
-      let fname = fnameTh || fnameEn;
-      let lname = lnameTh || lnameEn;
-      let fullName = '';
-
-      if (fname && lname) {
-        fname = fname.replace(/^(นาย|นางสาว|นาง|เด็กชาย|เด็กหญิง|Mr\.|Mrs\.|Miss)/i, '').trim();
-        fullName = 'คุณ' + fname + ' ' + lname;
-      } else {
-        let tempName = keys['fullnameth'] || keys['nameth'] || keys['fullname'] || keys['name'] || '';
-        tempName = tempName.replace(/^(นาย|นางสาว|นาง|เด็กชาย|เด็กหญิง|Mr\.|Mrs\.|Miss)/i, '').trim();
-        if (tempName) fullName = 'คุณ' + tempName;
-      }
-
-      let genderRaw = keys['gender'] || keys['sex'] || keys['genderth'] || '';
-      let gender = '';
-      if (genderRaw) {
-        let gStr = String(genderRaw).trim().toLowerCase();
-        if (gStr === '1' || gStr === 'm' || gStr.includes('ชาย')) gender = 'ชาย';
-        else if (gStr === '2' || gStr === 'f' || gStr.includes('หญิง')) gender = 'หญิง';
-      }
-
-      let age = keys['age'] || '';
-      let dob = keys['birthdate'] || keys['dob'] || '';
-      if (!age && dob) {
-        let dobStr = String(dob).replace(/\D/g, '');
-        if (dobStr.length >= 4) {
-          let birthYear = parseInt(dobStr.substring(0, 4));
-          let currentYear = new Date().getFullYear();
-          if (birthYear > 2400) birthYear -= 543;
-          if (birthYear > 1900 && birthYear <= currentYear) age = currentYear - birthYear;
-        }
-      }
-
-      let photo = keys['base64img'] || keys['photobase64'] || keys['photo'] || keys['image'] || '';
-
-      return {
-        cid: cid,
-        fullName: String(fullName).trim(),
-        gender: gender,
-        age: age ? String(age) : '',
-        photo: typeof photo === 'string' ? photo.trim() : ''
-      };
-    }
-
-    async function applyCardDataToForm(info) {
-      if (info.fullName) document.getElementById('f_name').value = info.fullName;
-      if (info.gender) document.getElementById('f_gender').value = info.gender;
-      if (info.age) document.getElementById('f_age').value = info.age;
-
-      if (info.photo) {
-        let base64Str = info.photo.startsWith('data:image') ? info.photo : 'data:image/jpeg;base64,' + info.photo;
-        document.getElementById('imgPreview').src = base64Str;
-
-        showLoading('กำลังอัปโหลดรูปถ่ายเข้า Google Drive Folder...');
-        let fileName = (info.fullName || info.cid || 'patient') + '_ID.jpg';
-
-        let res = await callApi('uploadFileToDrive', { base64Data: base64Str, filename: fileName });
-        hideLoading();
-        if (res && res.status === 'success') {
-          document.getElementById('f_patientImgUrl').value = res.url;
-          Swal.fire('สำเร็จ', 'นำเข้าข้อมูลบัตรประชาชนและรูปเรียบร้อยแล้ว', 'success');
-        } else {
-          Swal.fire('สำเร็จ', 'อ่านข้อมูลบัตรสำเร็จ แต่อัปโหลดรูปไม่สำเร็จ: ' + (res ? res.message : ''), 'warning');
-        }
-      } else {
-        hideLoading();
-        Swal.fire('สำเร็จ', 'นำเข้าข้อมูลบัตรประชาชนเรียบร้อยแล้ว (ไม่มีรูปถ่าย)', 'success');
-      }
-    }
-
-    function readSmartCard() {
-      if (lastCapturedCard && (lastCapturedCard.cid || lastCapturedCard.fullName)) {
-        applyCardDataToForm(lastCapturedCard);
-        return;
-      }
-
-      document.getElementById('smcButtons').style.display = 'none';
-      document.getElementById('smcRetry').style.display = 'none';
-      document.getElementById('smcLoading').style.display = 'block';
-
-      let countdown = 20;
-      document.getElementById('smcCountdown').innerText = countdown;
-
-      clearInterval(smcTimeoutInterval);
-      smcTimeoutInterval = setInterval(() => {
-        countdown--;
-        
-        if (lastCapturedCard && (lastCapturedCard.cid || lastCapturedCard.fullName)) {
-          clearInterval(smcTimeoutInterval);
-          resetSMCUI();
-          applyCardDataToForm(lastCapturedCard);
-          return;
-        }
-
-        if (countdown <= 0) {
-          clearInterval(smcTimeoutInterval);
-          document.getElementById('smcLoading').style.display = 'none';
-          document.getElementById('smcRetry').style.display = 'block';
-        } else {
-          document.getElementById('smcCountdown').innerText = countdown;
-        }
-      }, 1000);
-    }
-
-    function resetSMCUI() {
-      clearInterval(smcTimeoutInterval);
-      document.getElementById('smcButtons').style.display = 'flex';
-      document.getElementById('smcLoading').style.display = 'none';
-      document.getElementById('smcRetry').style.display = 'none';
-    }
+    });
   </script>
 </body>
 </html>
